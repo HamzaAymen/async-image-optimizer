@@ -1,0 +1,16 @@
+node_modules/
+dist/
+build/
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store
+bun.lockb
+.turbo/
+
+# Claude Code — never commit
+.claude/
+CLAUDE.md
+.claude.json
+.claude.local.json
