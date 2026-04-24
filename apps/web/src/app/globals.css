@@ -1,26 +1,48 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f3f4f4;
+  --foreground: #0b0b0c;
+  --surface: #ffffff;
+  --border: #e5e5e7;
+  --muted: #6b6b70;
+
+  --status-queued: #8a8f98;
+  --status-queued-bg: #ececee;
+  --status-running: #2563eb;
+  --status-running-bg: #e0ebff;
+  --status-completed: #15803d;
+  --status-completed-bg: #dcf5e4;
+  --status-failed: #b91c1c;
+  --status-failed-bg: #fde2e2;
+  --status-canceled: #52525b;
+  --status-canceled-bg: #e4e4e7;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-border: var(--border);
+  --color-muted: var(--muted);
+
+  --color-status-queued: var(--status-queued);
+  --color-status-queued-bg: var(--status-queued-bg);
+  --color-status-running: var(--status-running);
+  --color-status-running-bg: var(--status-running-bg);
+  --color-status-completed: var(--status-completed);
+  --color-status-completed-bg: var(--status-completed-bg);
+  --color-status-failed: var(--status-failed);
+  --color-status-failed-bg: var(--status-failed-bg);
+  --color-status-canceled: var(--status-canceled);
+  --color-status-canceled-bg: var(--status-canceled-bg);
+
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
 }
