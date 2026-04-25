@@ -3,7 +3,8 @@
   "private": true,
   "version": "0.0.1",
   "workspaces": [
-    "apps/*"
+    "apps/*",
+    "packages/*"
   ],
   "scripts": {
     "dev:web": "bun --filter web dev",

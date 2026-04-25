@@ -1,0 +1,32 @@
+{
+  "name": "db",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "main": "./index.ts",
+  "module": "./index.ts",
+  "types": "./index.ts",
+  "exports": {
+    ".": "./index.ts"
+  },
+  "scripts": {
+    "generate": "prisma generate",
+    "migrate:dev": "prisma migrate dev",
+    "migrate:deploy": "prisma migrate deploy",
+    "db:push": "prisma db push",
+    "studio": "prisma studio"
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "^0.10.4",
+    "@prisma/adapter-neon": "^7.0.0",
+    "@prisma/client": "^7.0.0"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "dotenv": "^16.4.7",
+    "prisma": "^7.0.0"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  }
+}

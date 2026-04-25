@@ -1,0 +1,63 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+ enum JobStatus {
+    PENDING
+    QUEUED
+    RUNNING
+    COMPLETED
+    FAILED
+    CANCELLED
+  }
+
+  enum EventType {
+    JOB_CREATED
+    JOB_QUEUED
+    JOB_RUNNING
+    JOB_COMPLETED
+    JOB_FAILED
+    JOB_CANCELLED
+  }
+
+   model Job {
+    id            String    @id @default(cuid())
+    status        JobStatus @default(PENDING)
+
+    // source (what the client uploaded to R2)
+    sourceKey     String                 // e.g. "uploads/uuid-name.jpg"
+    sourceBucket  String
+    sourceType    String                 // content-type
+    sourceSize    Int?
+
+    // result (what the worker produced)
+    outputKey     String?
+    outputSize    Int?
+    outputFormat  String?
+
+    error         String?
+    attempts      Int      @default(0)
+
+    createdAt     DateTime @default(now())
+    updatedAt     DateTime @updatedAt
+
+
+    @@index([status, createdAt])
+  }
+
+  model Event {
+    id           String    @id @default(cuid())
+    jobId        String
+    type         EventType
+    payload      Json
+    createdAt    DateTime  @default(now())
+    publishedAt  DateTime?
+
+    @@index([publishedAt, createdAt])
+    @@index([jobId])
+  }

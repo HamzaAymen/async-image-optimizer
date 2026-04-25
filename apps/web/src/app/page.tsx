@@ -62,6 +62,23 @@ async function uploadImage(file: File): Promise<PresignResponse> {
     throw new Error(`Upload failed (${putRes.status})`);
   }
 
+  const jobRes = await fetch(`${API_URL}/jobs`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      sourceKey: presign.key,
+      sourceBucket: presign.bucket,
+      sourceType: file.type,
+      sourceSize: file.size,
+    }),
+  });
+  if (!jobRes.ok) {
+    const body = (await jobRes.json().catch(() => null)) as {
+      error?: string;
+    } | null;
+    throw new Error(body?.error ?? "Failed to create job");
+  }
+
   return presign;
 }
 

@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { prisma } from "db";
 import express, {
   type NextFunction,
   type Request,
@@ -82,6 +83,49 @@ app.post("/uploads/presign", async (req: Request, res: Response) => {
     expiresIn: 300,
     method: "PUT",
   });
+});
+
+app.post("/jobs", async (req: Request, res: Response) => {
+  const { sourceKey, sourceBucket, sourceType, sourceSize } = req.body ?? {};
+
+  if (typeof sourceKey !== "string" || sourceKey.length === 0) {
+    return res.status(400).json({ error: "Missing or invalid sourceKey" });
+  }
+  if (typeof sourceBucket !== "string" || sourceBucket.length === 0) {
+    return res.status(400).json({ error: "Missing or invalid sourceBucket" });
+  }
+  if (
+    typeof sourceType !== "string" ||
+    !ALLOWED_CONTENT_TYPES.has(sourceType)
+  ) {
+    return res
+      .status(400)
+      .json({ error: "Unsupported or missing sourceType" });
+  }
+  if (
+    sourceSize !== undefined &&
+    sourceSize !== null &&
+    (!Number.isInteger(sourceSize) || sourceSize < 0)
+  ) {
+    return res.status(400).json({ error: "Invalid sourceSize" });
+  }
+
+  try {
+    const job = await prisma.job.create({
+      data: {
+        sourceKey,
+        sourceBucket,
+        sourceType,
+        sourceSize: sourceSize ?? null,
+      },
+    });
+    res.status(201).json(job);
+  } catch (err) {
+    console.error("/jobs failed:", err);
+    res.status(500).json({
+      error: err instanceof Error ? err.message : "Failed to create job",
+    });
+  }
 });
 
 app.listen(config.port, () => {
