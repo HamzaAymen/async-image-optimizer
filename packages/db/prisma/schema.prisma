@@ -40,6 +40,8 @@ datasource db {
     outputSize    Int?
     outputFormat  String?
 
+    operations    Json?
+
     error         String?
     attempts      Int      @default(0)
 
