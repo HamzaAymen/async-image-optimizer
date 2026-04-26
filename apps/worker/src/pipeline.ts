@@ -31,7 +31,6 @@ export async function runPipeline(
       width: ops.width ?? undefined,
       height: ops.height ?? undefined,
       fit: "inside",
-      withoutEnlargement: true,
     });
   } else if (!wantsWebp) {
     img = img.resize({

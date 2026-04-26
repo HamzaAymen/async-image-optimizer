@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "@tanstack/react-query";
@@ -11,6 +12,7 @@ import {
 import { uploadImage } from "@/lib/upload-client";
 import { Dropzone } from "./Dropzone";
 import { DimensionFields } from "./DimensionFields";
+import { JobStatus } from "./JobStatus";
 import { StatusBanner } from "./StatusBanner";
 
 function toOperations(values: UploadFormValues): Operations {
@@ -39,10 +41,15 @@ export function UploadForm() {
 
   const file = watch("file");
 
+  const [jobId, setJobId] = useState<string | null>(null);
+
   const mutation = useMutation({
     mutationFn: (values: UploadFormValues) =>
       uploadImage(values.file as File, toOperations(values)),
-    onSuccess: () => reset({ webp: false }),
+    onSuccess: ({ job }) => {
+      setJobId(job.id);
+      reset({ webp: false });
+    },
   });
 
   return (
@@ -95,11 +102,7 @@ export function UploadForm() {
           {mutation.isError && (
             <StatusBanner variant="error">{mutation.error.message}</StatusBanner>
           )}
-          {mutation.isSuccess && (
-            <StatusBanner variant="success">
-              Uploaded as <code className="font-mono">{mutation.data.key}</code>
-            </StatusBanner>
-          )}
+          {jobId && <JobStatus jobId={jobId} />}
         </form>
       </div>
     </main>

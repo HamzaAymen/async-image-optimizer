@@ -1,10 +1,18 @@
 import { config } from "./config";
+import { registerMaintenanceSchedules } from "./lib/maintenance-queue";
+import { maintenanceWorker } from "./maintenance-worker";
 import { shutdown, worker } from "./queue";
 
 console.log(
   `[worker] started (concurrency=${config.concurrency}, queue=image-jobs)`,
 );
 void worker;
+void maintenanceWorker;
+
+await registerMaintenanceSchedules();
+console.log(
+  "[worker] maintenance scheduler registered (cleanup-events */1 * * * *)",
+);
 
 let shuttingDown = false;
 async function handleSignal(signal: string) {

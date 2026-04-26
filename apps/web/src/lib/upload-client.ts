@@ -1,10 +1,20 @@
 import { api } from "./api";
 import type { Operations, PresignResponse } from "./upload-schema";
 
+export type CreatedJob = {
+  id: string;
+  status: "PENDING" | "QUEUED" | "RUNNING" | "COMPLETED" | "FAILED" | "CANCELLED";
+};
+
+export type UploadResult = {
+  presign: PresignResponse;
+  job: CreatedJob;
+};
+
 export async function uploadImage(
   file: File,
   operations: Operations,
-): Promise<PresignResponse> {
+): Promise<UploadResult> {
   const presign = await api
     .post("uploads/presign", {
       json: { contentType: file.type },
@@ -20,15 +30,17 @@ export async function uploadImage(
     throw new Error(`Upload failed (${putRes.status})`);
   }
 
-  await api.post("jobs", {
-    json: {
-      sourceKey: presign.key,
-      sourceBucket: presign.bucket,
-      sourceType: file.type,
-      sourceSize: file.size,
-      operations,
-    },
-  });
+  const job = await api
+    .post("jobs", {
+      json: {
+        sourceKey: presign.key,
+        sourceBucket: presign.bucket,
+        sourceType: file.type,
+        sourceSize: file.size,
+        operations,
+      },
+    })
+    .json<CreatedJob>();
 
-  return presign;
+  return { presign, job };
 }

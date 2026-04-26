@@ -2,7 +2,9 @@ import { Worker } from "bullmq";
 import { EventType, JobStatus, prisma } from "db";
 import { IMAGE_QUEUE_NAME, type ImageJobPayload } from "queue";
 import { config } from "./config";
+import { maintenanceQueue } from "./lib/maintenance-queue";
 import { redis } from "./lib/redis";
+import { maintenanceWorker } from "./maintenance-worker";
 import { processImageJob } from "./processor";
 
 export const worker = new Worker<ImageJobPayload>(
@@ -53,6 +55,7 @@ worker.on("error", (err) => {
 });
 
 export async function shutdown(): Promise<void> {
-  await worker.close();
+  await Promise.all([worker.close(), maintenanceWorker.close()]);
+  await maintenanceQueue.close();
   await redis.quit();
 }

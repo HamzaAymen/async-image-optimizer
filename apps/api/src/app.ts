@@ -4,6 +4,7 @@ import express, {
   type Request,
   type Response,
 } from "express";
+import "./lib/queue-events";
 import { jobsRouter } from "./routes/jobs";
 import { uploadsRouter } from "./routes/uploads";
 
