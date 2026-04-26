@@ -1,5 +1,7 @@
-import { prisma } from "db";
+import { EventType, JobStatus, prisma } from "db";
 import { Router } from "express";
+import { IMAGE_JOB_NAME } from "queue";
+import { imageQueue } from "../lib/queue";
 import { parseBody } from "../lib/validate";
 import { jobBodySchema, type JobBody } from "../schemas";
 
@@ -18,7 +20,42 @@ jobsRouter.post("/", async (req, res) => {
       operations: normalizeOperations(body.operations),
     },
   });
-  res.status(201).json(job);
+
+  await prisma.event.create({
+    data: { jobId: job.id, type: EventType.JOB_CREATED, payload: {} },
+  });
+
+  try {
+    await imageQueue.add(
+      IMAGE_JOB_NAME,
+      { jobId: job.id },
+      {
+        jobId: job.id,
+        attempts: 3,
+        backoff: { type: "exponential", delay: 5000 },
+        removeOnComplete: { age: 3600 },
+        removeOnFail: { age: 86400 },
+      },
+    );
+  } catch (err) {
+    res.status(503).json({
+      error: "Failed to enqueue job",
+      jobId: job.id,
+      detail: err instanceof Error ? err.message : String(err),
+    });
+    return;
+  }
+
+  const queued = await prisma.job.update({
+    where: { id: job.id },
+    data: { status: JobStatus.QUEUED },
+  });
+
+  await prisma.event.create({
+    data: { jobId: job.id, type: EventType.JOB_QUEUED, payload: {} },
+  });
+
+  res.status(201).json(queued);
 });
 
 function normalizeOperations(operations: JobBody["operations"]) {
