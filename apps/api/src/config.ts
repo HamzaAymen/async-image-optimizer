@@ -19,6 +19,7 @@ function optionalNumber(name: string, fallback: number): number {
 export const config = {
   port: optionalNumber("PORT", 3001),
   redisUrl: requireEnv("REDIS_URL"),
+  webOrigin: requireEnv("WEB_ORIGIN"),
   r2: {
     accountId: requireEnv("R2_ACCOUNT_ID"),
     accessKeyId: requireEnv("R2_ACCESS_KEY_ID"),

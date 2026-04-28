@@ -4,6 +4,7 @@ import express, {
   type Request,
   type Response,
 } from "express";
+import { config } from "./config";
 import "./lib/queue-events";
 import { jobsRouter } from "./routes/jobs";
 import { uploadsRouter } from "./routes/uploads";
@@ -16,7 +17,7 @@ const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
 export function createApp() {
   const app = express();
 
-  app.use(cors({ origin: "http://localhost:3000" }));
+  app.use(cors({ origin: config.webOrigin }));
   app.use(express.json());
 
   app.use("/uploads", uploadsRouter);
