@@ -8,6 +8,7 @@ import { config } from "../config";
 import { s3 } from "../lib/r2";
 import { imageQueue } from "../lib/queue";
 import { jobBus } from "../lib/queue-events";
+import { submitJobLimiter } from "../lib/rate-limit";
 import { parseBody } from "../lib/validate";
 import { jobBodySchema, type JobBody } from "../schemas";
 
@@ -58,7 +59,7 @@ function buildDownloadFilename(job: Job) {
   return `optimized-${job.id}.${ext}`;
 }
 
-jobsRouter.post("/", async (req, res) => {
+jobsRouter.post("/", submitJobLimiter, async (req, res) => {
   const body = parseBody(jobBodySchema, req, res);
   if (!body) return;
 
