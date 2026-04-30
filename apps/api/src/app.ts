@@ -1,10 +1,12 @@
 import cors from "cors";
+import { prisma } from "db";
 import express, {
   type ErrorRequestHandler,
   type Request,
   type Response,
 } from "express";
 import { config } from "./config";
+import { redis } from "./lib/redis";
 import "./lib/queue-events";
 import { jobsRouter } from "./routes/jobs";
 import { uploadsRouter } from "./routes/uploads";
@@ -22,6 +24,15 @@ export function createApp() {
 
   app.use("/uploads", uploadsRouter);
   app.use("/jobs", jobsRouter);
+
+  app.get("/health", async (_req: Request, res: Response) => {
+    try {
+      await Promise.all([redis.ping(), prisma.$queryRaw`SELECT 1`]);
+      res.status(200).json({ ok: true });
+    } catch (err) {
+      res.status(503).json({ ok: false, error: String(err) });
+    }
+  });
 
   app.use((_req: Request, res: Response) => {
     res.status(404).json({ error: "Not found" });
