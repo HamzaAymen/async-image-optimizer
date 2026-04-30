@@ -2,7 +2,7 @@ app = "async-image-optimizer-worker"
 primary_region = "fra"
 
 [build]
-  dockerfile = "apps/worker/Dockerfile"
+  dockerfile = "Dockerfile"
 
 [env]
   NODE_ENV = "production"
