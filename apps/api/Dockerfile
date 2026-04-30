@@ -22,5 +22,5 @@ WORKDIR /app
 ENV NODE_ENV=production
 COPY --from=builder /app /app
 
-EXPOSE 3001
+EXPOSE 8080
 CMD ["bun", "run", "apps/api/src/index.ts"]
