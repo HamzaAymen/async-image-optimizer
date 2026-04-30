@@ -15,7 +15,7 @@ COPY packages/db packages/db
 COPY apps/api apps/api
 COPY tsconfig.json ./
 
-RUN cd packages/db && bunx prisma generate
+RUN cd packages/db && DATABASE_URL="postgresql://placeholder:placeholder@localhost:5432/placeholder" bunx prisma generate
 
 FROM oven/bun:1-debian AS runtime
 WORKDIR /app
