@@ -2,6 +2,7 @@ import ky, { HTTPError } from "ky";
 
 export const api = ky.create({
   prefix: process.env.NEXT_PUBLIC_API_URL ?? "",
+  timeout: 30_000,
   hooks: {
     beforeError: [
       async ({ error }) => {

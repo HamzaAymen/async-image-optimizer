@@ -18,6 +18,11 @@ export async function uploadImage(
   const presign = await api
     .post("uploads/presign", {
       json: { contentType: file.type },
+      retry: {
+        limit: 2,
+        methods: ["post"],
+        statusCodes: [408, 502, 503, 504],
+      },
     })
     .json<PresignResponse>();
 
