@@ -73,10 +73,6 @@ jobsRouter.post("/", submitJobLimiter, async (req, res) => {
     },
   });
 
-  await prisma.event.create({
-    data: { jobId: job.id, type: EventType.JOB_CREATED, payload: {} },
-  });
-
   try {
     await imageQueue.add(
       IMAGE_JOB_NAME,
@@ -103,11 +99,16 @@ jobsRouter.post("/", submitJobLimiter, async (req, res) => {
     data: { status: JobStatus.QUEUED },
   });
 
-  await prisma.event.create({
-    data: { jobId: job.id, type: EventType.JOB_QUEUED, payload: {} },
-  });
-
   res.status(201).json(queued);
+
+  void prisma.event
+    .createMany({
+      data: [
+        { jobId: job.id, type: EventType.JOB_CREATED, payload: {} },
+        { jobId: job.id, type: EventType.JOB_QUEUED, payload: {} },
+      ],
+    })
+    .catch((err) => console.error("[jobs] event log failed", err));
 });
 
 jobsRouter.get("/:id", async (req, res) => {
