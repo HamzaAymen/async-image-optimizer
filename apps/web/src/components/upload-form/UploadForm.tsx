@@ -5,10 +5,12 @@ import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "@tanstack/react-query";
 import {
+  MAX_FILE_SIZE,
   uploadSchema,
   type Operations,
   type UploadFormValues,
 } from "@/lib/upload-schema";
+import { formatBytes } from "@/lib/format";
 import { uploadImage } from "@/lib/upload-client";
 import { Dropzone } from "./Dropzone";
 import { DimensionFields } from "./DimensionFields";
@@ -60,7 +62,7 @@ export function UploadForm() {
             Upload image
           </h1>
           <p className="text-sm text-muted mt-1">
-            JPEG, PNG, WebP, AVIF or GIF — up to 5MB.
+            JPEG, PNG, WebP, AVIF or GIF — up to {formatBytes(MAX_FILE_SIZE)}.
           </p>
         </header>
 

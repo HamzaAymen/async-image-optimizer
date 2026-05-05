@@ -15,9 +15,11 @@ export type PipelineResult = {
 
 const DEFAULT_MAX_DIM = 1920;
 const DEFAULT_QUALITY = 80;
-const MAX_INPUT_PIXELS = 100_000_000;
+// Sized for the 512MB worker: ~24MP decoded RGB ≈ 72MB, leaving headroom for
+// libvips working memory and runtime baseline. Anything larger fails fast.
+const MAX_INPUT_PIXELS = 24_000_000;
 
-// Keep libvips' working set small enough to fit the 256MB Fly machine.
+// Keep libvips' working set small enough to fit the 512MB Fly machine.
 sharp.concurrency(1);
 sharp.cache(false);
 
@@ -40,7 +42,10 @@ export async function runPipeline(
       height: ops.height ?? undefined,
       fit: "inside",
     });
-  } else if (!wantsWebp) {
+  } else {
+    // Always cap dimensions when the user didn't ask for an explicit resize —
+    // protects the worker from full-resolution decode/encode of big inputs
+    // (especially for the webp path, which would otherwise skip the cap).
     img = img.resize({
       width: DEFAULT_MAX_DIM,
       height: DEFAULT_MAX_DIM,
