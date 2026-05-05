@@ -19,6 +19,8 @@ const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
 export function createApp() {
   const app = express();
 
+  app.set("trust proxy", 1);
+
   app.use(cors({ origin: config.webOrigin }));
   app.use(express.json());
 

@@ -1,9 +1,9 @@
-# fly.toml app configuration file generated for async-image-optimizer-ce4k5q on 2026-05-01T11:12:47Z
+# fly.toml app configuration file generated for async-image-optimizer-worker on 2026-05-01T11:12:47Z
 #
 # See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 #
 
-app = 'async-image-optimizer-ce4k5q'
+app = 'async-image-optimizer-worker'
 primary_region = 'fra'
 
 [build]

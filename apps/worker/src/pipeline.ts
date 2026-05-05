@@ -15,13 +15,21 @@ export type PipelineResult = {
 
 const DEFAULT_MAX_DIM = 1920;
 const DEFAULT_QUALITY = 80;
+const MAX_INPUT_PIXELS = 100_000_000;
+
+// Keep libvips' working set small enough to fit the 256MB Fly machine.
+sharp.concurrency(1);
+sharp.cache(false);
 
 export async function runPipeline(
   input: Buffer,
   ops: Operations,
   sourceType: string,
 ): Promise<PipelineResult> {
-  let img = sharp(input, { failOn: "error" }).rotate();
+  let img = sharp(input, {
+    failOn: "error",
+    limitInputPixels: MAX_INPUT_PIXELS,
+  }).rotate();
 
   const wantsResize = ops.width != null || ops.height != null;
   const wantsWebp = ops.webp === true;
