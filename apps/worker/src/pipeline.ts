@@ -15,9 +15,12 @@ export type PipelineResult = {
 
 const DEFAULT_MAX_DIM = 1920;
 const DEFAULT_QUALITY = 80;
-// Sized for the 512MB worker: ~24MP decoded RGB ≈ 72MB, leaving headroom for
-// libvips working memory and runtime baseline. Anything larger fails fast.
-const MAX_INPUT_PIXELS = 24_000_000;
+// PNG/WebP must be fully decoded — ~24MP RGB ≈ 72MB, fits the 512MB worker.
+const MAX_INPUT_PIXELS_DECODED = 24_000_000;
+// JPEG benefits from libvips shrink-on-load (1/2, 1/4, 1/8), so the resize
+// target bounds actual memory rather than the raw dimensions. Allow up to a
+// full-frame DSLR / large phone HDR shot — the 10MB upload cap is the real guard.
+const MAX_INPUT_PIXELS_JPEG = 80_000_000;
 
 // Keep libvips' working set small enough to fit the 512MB Fly machine.
 sharp.concurrency(1);
@@ -28,9 +31,10 @@ export async function runPipeline(
   ops: Operations,
   sourceType: string,
 ): Promise<PipelineResult> {
+  const isJpeg = sourceType === "image/jpeg" || sourceType === "image/jpg";
   let img = sharp(input, {
     failOn: "error",
-    limitInputPixels: MAX_INPUT_PIXELS,
+    limitInputPixels: isJpeg ? MAX_INPUT_PIXELS_JPEG : MAX_INPUT_PIXELS_DECODED,
   }).rotate();
 
   const wantsResize = ops.width != null || ops.height != null;
