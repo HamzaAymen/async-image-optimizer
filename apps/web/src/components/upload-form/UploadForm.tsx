@@ -60,7 +60,7 @@ export function UploadForm() {
             Upload image
           </h1>
           <p className="text-sm text-muted mt-1">
-            JPEG, PNG, WebP, AVIF or GIF — up to 20MB.
+            JPEG, PNG, WebP, AVIF or GIF — up to 5MB.
           </p>
         </header>
 
