@@ -5,13 +5,10 @@ export const api = ky.create({
   timeout: 30_000,
   hooks: {
     beforeError: [
-      async ({ error }) => {
+      ({ error }) => {
         if (!(error instanceof HTTPError)) return error;
-        const body = (await error.response
-          .clone()
-          .json()
-          .catch(() => null)) as { error?: string } | null;
-        if (body?.error) error.message = body.error;
+        const data = error.data as { error?: string } | undefined;
+        if (data?.error) error.message = data.error;
         return error;
       },
     ],
