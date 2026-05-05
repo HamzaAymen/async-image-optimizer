@@ -3,7 +3,7 @@
 # See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 #
 
-app = 'async-image-optimizer-worker'
+app = 'async-image-optimizer-ce4k5q'
 primary_region = 'fra'
 
 [build]

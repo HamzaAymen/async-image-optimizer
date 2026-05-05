@@ -7,3 +7,5 @@ export const ALLOWED_CONTENT_TYPES = [
 ] as const;
 
 export type AllowedContentType = (typeof ALLOWED_CONTENT_TYPES)[number];
+
+export const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;

@@ -23,6 +23,7 @@ uploadsRouter.post("/presign", async (req, res) => {
       Bucket: config.r2.bucket,
       Key: key,
       ContentType: body.contentType,
+      ContentLength: body.contentLength,
     }),
     { expiresIn: PRESIGN_EXPIRES_IN },
   );

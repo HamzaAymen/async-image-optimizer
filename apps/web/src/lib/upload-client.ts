@@ -17,7 +17,7 @@ export async function uploadImage(
 ): Promise<UploadResult> {
   const presign = await api
     .post("uploads/presign", {
-      json: { contentType: file.type },
+      json: { contentType: file.type, contentLength: file.size },
       retry: {
         limit: 2,
         methods: ["post"],

@@ -8,7 +8,7 @@ export const ALLOWED_CONTENT_TYPES = [
   "image/gif",
 ] as const;
 
-export const MAX_FILE_SIZE = 20 * 1024 * 1024;
+export const MAX_FILE_SIZE = 5 * 1024 * 1024;
 
 const dimension = z
   .union([z.string(), z.number()])
@@ -23,7 +23,7 @@ export const uploadSchema = z.object({
       (f) => (ALLOWED_CONTENT_TYPES as readonly string[]).includes(f.type),
       "Unsupported image type",
     )
-    .refine((f) => f.size <= MAX_FILE_SIZE, "File must be 20MB or smaller"),
+    .refine((f) => f.size <= MAX_FILE_SIZE, "File must be 5MB or smaller"),
   width: dimension,
   height: dimension,
   webp: z.boolean().default(false),
