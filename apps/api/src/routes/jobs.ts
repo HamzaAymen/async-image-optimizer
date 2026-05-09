@@ -94,10 +94,14 @@ jobsRouter.post("/", submitJobLimiter, async (req, res) => {
     return;
   }
 
-  const queued = await prisma.job.update({
-    where: { id: job.id },
+  // Only flip to QUEUED if the row is still PENDING — for tiny inputs the
+  // worker can finish (RUNNING → COMPLETED) before this update runs, and an
+  // unconditional update would clobber the terminal state back to QUEUED.
+  await prisma.job.updateMany({
+    where: { id: job.id, status: JobStatus.PENDING },
     data: { status: JobStatus.QUEUED },
   });
+  const queued = await prisma.job.findUniqueOrThrow({ where: { id: job.id } });
 
   res.status(201).json(queued);
 
