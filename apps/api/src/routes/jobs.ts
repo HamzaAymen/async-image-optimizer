@@ -3,10 +3,8 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { createSession } from "better-sse";
 import { EventType, JobStatus, prisma, type Job } from "db";
 import { Router } from "express";
-import { IMAGE_JOB_NAME } from "queue";
 import { config } from "../config";
 import { s3 } from "../lib/r2";
-import { imageQueue } from "../lib/queue";
 import { jobBus } from "../lib/queue-events";
 import { submitJobLimiter } from "../lib/rate-limit";
 import { parseBody } from "../lib/validate";
@@ -63,56 +61,27 @@ jobsRouter.post("/", submitJobLimiter, async (req, res) => {
   const body = parseBody(jobBodySchema, req, res);
   if (!body) return;
 
-  const job = await prisma.job.create({
-    data: {
-      sourceKey: body.sourceKey,
-      sourceBucket: body.sourceBucket,
-      sourceType: body.sourceType,
-      sourceSize: body.sourceSize ?? null,
-      operations: normalizeOperations(body.operations),
-    },
-  });
-
-  try {
-    await imageQueue.add(
-      IMAGE_JOB_NAME,
-      { jobId: job.id },
-      {
-        jobId: job.id,
-        attempts: 3,
-        backoff: { type: "exponential", delay: 5000 },
-        removeOnComplete: { age: 3600 },
-        removeOnFail: { age: 86400 },
+  const job = await prisma.$transaction(async (tx) => {
+    const created = await tx.job.create({
+      data: {
+        sourceKey: body.sourceKey,
+        sourceBucket: body.sourceBucket,
+        sourceType: body.sourceType,
+        sourceSize: body.sourceSize ?? null,
+        operations: normalizeOperations(body.operations),
       },
-    );
-  } catch (err) {
-    res.status(503).json({
-      error: "Failed to enqueue job",
-      jobId: job.id,
-      detail: err instanceof Error ? err.message : String(err),
     });
-    return;
-  }
-
-  // Only flip to QUEUED if the row is still PENDING — for tiny inputs the
-  // worker can finish (RUNNING → COMPLETED) before this update runs, and an
-  // unconditional update would clobber the terminal state back to QUEUED.
-  await prisma.job.updateMany({
-    where: { id: job.id, status: JobStatus.PENDING },
-    data: { status: JobStatus.QUEUED },
+    await tx.event.create({
+      data: {
+        jobId: created.id,
+        type: EventType.JOB_CREATED,
+        payload: {},
+      },
+    });
+    return created;
   });
-  const queued = await prisma.job.findUniqueOrThrow({ where: { id: job.id } });
 
-  res.status(201).json(queued);
-
-  void prisma.event
-    .createMany({
-      data: [
-        { jobId: job.id, type: EventType.JOB_CREATED, payload: {} },
-        { jobId: job.id, type: EventType.JOB_QUEUED, payload: {} },
-      ],
-    })
-    .catch((err) => console.error("[jobs] event log failed", err));
+  res.status(201).json(job);
 });
 
 jobsRouter.get("/:id", async (req, res) => {

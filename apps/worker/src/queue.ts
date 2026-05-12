@@ -32,17 +32,19 @@ worker.on("failed", async (job, err) => {
 
   const errorText = String(err.stack ?? err.message ?? err).slice(0, 4000);
   try {
-    await prisma.job.update({
-      where: { id: job.data.jobId },
-      data: { status: JobStatus.FAILED, error: errorText },
-    });
-    await prisma.event.create({
-      data: {
-        jobId: job.data.jobId,
-        type: EventType.JOB_FAILED,
-        payload: { error: errorText, attempts: job.attemptsMade },
-      },
-    });
+    await prisma.$transaction([
+      prisma.job.update({
+        where: { id: job.data.jobId },
+        data: { status: JobStatus.FAILED, error: errorText },
+      }),
+      prisma.event.create({
+        data: {
+          jobId: job.data.jobId,
+          type: EventType.JOB_FAILED,
+          payload: { error: errorText, attempts: job.attemptsMade },
+        },
+      }),
+    ]);
   } catch (dbErr) {
     console.error("[worker] failed to write FAILED state to DB:", dbErr);
   }

@@ -21,22 +21,23 @@ export async function processImageJob(
 ): Promise<void> {
   const { jobId } = payloadSchema.parse(bullJob.data);
 
-  const dbJob = await prisma.job.update({
-    where: { id: jobId },
-    data: {
-      status: JobStatus.RUNNING,
-      attempts: { increment: 1 },
-      error: null,
-    },
-  });
-
-  await prisma.event.create({
-    data: {
-      jobId,
-      type: EventType.JOB_RUNNING,
-      payload: { attempt: bullJob.attemptsMade + 1 },
-    },
-  });
+  const [dbJob] = await prisma.$transaction([
+    prisma.job.update({
+      where: { id: jobId },
+      data: {
+        status: JobStatus.RUNNING,
+        attempts: { increment: 1 },
+        error: null,
+      },
+    }),
+    prisma.event.create({
+      data: {
+        jobId,
+        type: EventType.JOB_RUNNING,
+        payload: { attempt: bullJob.attemptsMade + 1 },
+      },
+    }),
+  ]);
 
   const ops = (operationsSchema.parse(dbJob.operations) ?? {}) as Operations;
 
@@ -46,26 +47,27 @@ export async function processImageJob(
   const outputKey = `outputs/${dbJob.id}.${result.format}`;
   await putObject(config.r2.bucket, outputKey, result.buffer, result.contentType);
 
-  await prisma.job.update({
-    where: { id: jobId },
-    data: {
-      status: JobStatus.COMPLETED,
-      outputKey,
-      outputSize: result.size,
-      outputFormat: result.format,
-      error: null,
-    },
-  });
-
-  await prisma.event.create({
-    data: {
-      jobId,
-      type: EventType.JOB_COMPLETED,
-      payload: {
+  await prisma.$transaction([
+    prisma.job.update({
+      where: { id: jobId },
+      data: {
+        status: JobStatus.COMPLETED,
         outputKey,
         outputSize: result.size,
         outputFormat: result.format,
+        error: null,
       },
-    },
-  });
+    }),
+    prisma.event.create({
+      data: {
+        jobId,
+        type: EventType.JOB_COMPLETED,
+        payload: {
+          outputKey,
+          outputSize: result.size,
+          outputFormat: result.format,
+        },
+      },
+    }),
+  ]);
 }
