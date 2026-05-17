@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { GetObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { createSession } from "better-sse";
@@ -61,25 +62,30 @@ jobsRouter.post("/", submitJobLimiter, async (req, res) => {
   const body = parseBody(jobBodySchema, req, res);
   if (!body) return;
 
-  const job = await prisma.$transaction(async (tx) => {
-    const created = await tx.job.create({
+  // Pre-generate the id so we can pipeline both inserts in a batched
+  // $transaction. An interactive transaction here would serialize the
+  // INSERTs across separate round trips, which over the Neon WS adapter
+  // routinely blows the default 5s timeout.
+  const id = randomUUID();
+  const [job] = await prisma.$transaction([
+    prisma.job.create({
       data: {
+        id,
         sourceKey: body.sourceKey,
         sourceBucket: body.sourceBucket,
         sourceType: body.sourceType,
         sourceSize: body.sourceSize ?? null,
         operations: normalizeOperations(body.operations),
       },
-    });
-    await tx.event.create({
+    }),
+    prisma.event.create({
       data: {
-        jobId: created.id,
+        jobId: id,
         type: EventType.JOB_CREATED,
         payload: {},
       },
-    });
-    return created;
-  });
+    }),
+  ]);
 
   res.status(201).json(job);
 });
