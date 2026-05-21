@@ -125,6 +125,8 @@ Allowed content types are validated server-side from a fixed allowlist (`apps/ap
 
 ### 2. Job submission with the outbox pattern
 
+> **Note — disabled in this demo build.** The full outbox **relay** (a worker process polling the `Event` table every 2 seconds and publishing unprocessed rows) was originally part of this project and is the design described below. It has been **switched off** for now because the constant polling burned through the free-tier Neon CPU compute budget within a month. The `Event` rows are still written, but nothing reads them in the current build — the SSE fan-out runs entirely off BullMQ's `QueueEvents` (Redis pub/sub), and enqueueing happens directly inside the job-creation transaction instead of via a relay. The schema, indexes, and write sites are kept intact so the relay can be re-enabled in a paid environment without a migration. **This is a portfolio demo, not a production deployment — the tradeoff is intentional.**
+
 When a job is submitted, two things must be true:
 
 1. The job row exists in Postgres.

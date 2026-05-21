@@ -4,8 +4,10 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { createSession } from "better-sse";
 import { EventType, JobStatus, prisma, type Job } from "db";
 import { Router } from "express";
+import { IMAGE_JOB_NAME } from "queue";
 import { config } from "../config";
 import { s3 } from "../lib/r2";
+import { imageQueue } from "../lib/queue";
 import { jobBus } from "../lib/queue-events";
 import { submitJobLimiter } from "../lib/rate-limit";
 import { parseBody } from "../lib/validate";
@@ -62,32 +64,51 @@ jobsRouter.post("/", submitJobLimiter, async (req, res) => {
   const body = parseBody(jobBodySchema, req, res);
   if (!body) return;
 
-  // Pre-generate the id so we can pipeline both inserts in a batched
-  // $transaction. An interactive transaction here would serialize the
-  // INSERTs across separate round trips, which over the Neon WS adapter
-  // routinely blows the default 5s timeout.
   const id = randomUUID();
-  const [job] = await prisma.$transaction([
-    prisma.job.create({
-      data: {
-        id,
-        sourceKey: body.sourceKey,
-        sourceBucket: body.sourceBucket,
-        sourceType: body.sourceType,
-        sourceSize: body.sourceSize ?? null,
-        operations: normalizeOperations(body.operations),
-      },
-    }),
-    prisma.event.create({
-      data: {
-        jobId: id,
-        type: EventType.JOB_CREATED,
-        payload: {},
-      },
-    }),
-  ]);
+  try {
+    const job = await prisma.$transaction(
+      async (tx) => {
+        const created = await tx.job.create({
+          data: {
+            id,
+            status: JobStatus.QUEUED,
+            sourceKey: body.sourceKey,
+            sourceBucket: body.sourceBucket,
+            sourceType: body.sourceType,
+            sourceSize: body.sourceSize ?? null,
+            operations: normalizeOperations(body.operations),
+          },
+        });
+        await tx.event.create({
+          data: { jobId: id, type: EventType.JOB_CREATED, payload: {} },
+        });
 
-  res.status(201).json(job);
+        // Single enqueue attempt inside the transaction. If it throws, the
+        // inserts roll back so we never leak a phantom row. If it succeeds
+        // but the commit later fails, the worker's idempotency claim
+        // (UPDATE ... WHERE status='QUEUED') finds no row and ack-skips.
+        await imageQueue.add(
+          IMAGE_JOB_NAME,
+          { jobId: id },
+          {
+            jobId: id,
+            attempts: 3,
+            backoff: { type: "exponential", delay: 5000 },
+            removeOnComplete: { age: 3600 },
+            removeOnFail: { age: 86400 },
+          },
+        );
+
+        return created;
+      },
+      { maxWait: 5000, timeout: 15000 },
+    );
+
+    res.status(201).json(job);
+  } catch (err) {
+    console.error("[jobs] enqueue failed:", err);
+    res.status(503).json({ error: "Failed to enqueue job, please retry" });
+  }
 });
 
 jobsRouter.get("/:id", async (req, res) => {

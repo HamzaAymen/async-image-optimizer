@@ -21,15 +21,24 @@ export async function processImageJob(
 ): Promise<void> {
   const { jobId } = payloadSchema.parse(bullJob.data);
 
+  // At-least-once delivery: only claim jobs still in QUEUED. If the row is
+  // missing (transaction rolled back) or already past QUEUED (duplicate
+  // delivery), ack-skip without touching anything else.
+  const claim = await prisma.job.updateMany({
+    where: { id: jobId, status: JobStatus.QUEUED },
+    data: {
+      status: JobStatus.RUNNING,
+      attempts: { increment: 1 },
+      error: null,
+    },
+  });
+  if (claim.count === 0) {
+    console.log(`[worker] skipping ${jobId}: row missing or not QUEUED`);
+    return;
+  }
+
   const [dbJob] = await prisma.$transaction([
-    prisma.job.update({
-      where: { id: jobId },
-      data: {
-        status: JobStatus.RUNNING,
-        attempts: { increment: 1 },
-        error: null,
-      },
-    }),
+    prisma.job.findUniqueOrThrow({ where: { id: jobId } }),
     prisma.event.create({
       data: {
         jobId,
