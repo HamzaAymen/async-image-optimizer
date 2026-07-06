@@ -1,0 +1,42 @@
+# Caddy reverse proxy for the API.
+#
+# CURRENT: IP-only with an internally-signed (self-signed) certificate.
+# Browsers will show a "not trusted" warning — expected until a real domain
+# is pointed at this box.
+#
+# TO SWITCH TO A REAL DOMAIN LATER (gets a trusted Let's Encrypt cert):
+#   1. Point a DNS A record at 178.104.112.72
+#   2. Replace the "178.104.112.72:443" line below with "api.example.com"
+#   3. Delete the "tls internal" line
+#   4. Optionally set an email in the global block for ACME notices
+#   5. `docker compose -f docker-compose.prod.yml restart caddy`
+
+{
+	# email you@example.com   # uncomment when using a real domain
+	auto_https disable_redirects
+	# Clients connecting to a bare IP send no SNI, so Caddy can't otherwise
+	# pick a cert. This makes the IP's internal cert the default.
+	# Remove this line once you switch to a real domain.
+	default_sni 178.104.112.72
+}
+
+178.104.112.72:443 {
+	tls internal
+
+	# SSE endpoint: /jobs/:id/stream — stream events to the browser with NO
+	# proxy buffering. flush_interval -1 forces Caddy to flush every write
+	# straight through, so status updates arrive in real time.
+	@sse path_regexp sse ^/jobs/[^/]+/stream$
+	reverse_proxy @sse api:8080 {
+		flush_interval -1
+	}
+
+	# Everything else. (No `encode`/gzip on purpose — compression can buffer
+	# the SSE stream.)
+	reverse_proxy api:8080
+}
+
+# Redirect plain HTTP to HTTPS.
+178.104.112.72:80 {
+	redir https://{host}{uri} permanent
+}

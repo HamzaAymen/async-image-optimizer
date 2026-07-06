@@ -1,0 +1,75 @@
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: aio-redis
+    restart: always
+    # noeviction is REQUIRED for BullMQ — if Redis evicts keys under memory
+    # pressure the queue silently loses jobs. appendonly persists the queue
+    # across restarts. No host port is published: Redis is reachable only on
+    # the internal Docker network (api/worker connect via redis://redis:6379).
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory-policy", "noeviction"]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: aio-api
+    restart: always
+    env_file: .env.prod
+    environment:
+      PORT: "8080"
+    depends_on:
+      redis:
+        condition: service_healthy
+    # Only exposed to the Docker network; Caddy is the public entrypoint.
+    expose:
+      - "8080"
+    healthcheck:
+      test: ["CMD", "bun", "-e", "const r=await fetch('http://localhost:8080/health');process.exit(r.ok?0:1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 25s
+
+  worker:
+    build:
+      context: .
+      dockerfile: apps/worker/Dockerfile
+    container_name: aio-worker
+    restart: always
+    env_file: .env.prod
+    environment:
+      # Pinned explicitly. On this 2-vCPU box the code default
+      # (navigator.hardwareConcurrency) would resolve to 2; Fly pinned it to 1.
+      # 2 is safe here (4 GB RAM, sharp memory guards are conservative).
+      # Drop to "1" if you ever see the worker OOM under load.
+      WORKER_CONCURRENCY: "2"
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: aio-caddy
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - api
+
+volumes:
+  redis-data:
+  caddy-data:
+  caddy-config:
